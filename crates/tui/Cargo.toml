@@ -23,6 +23,12 @@ clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
 cpal = { version = "0.18", optional = true }
 
+[package.metadata.release]
+# Keep the web app's version in step with the workspace.
+pre-release-replacements = [
+  { file = "../../web/package.json", search = '"version": "[^"]+"', replace = '"version": "{{version}}"', exactly = 1 },
+]
+
 [features]
 default = ["audio"]
 # Speaker/tape output through the system's audio device (ALSA on Linux).

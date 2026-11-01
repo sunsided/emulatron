@@ -6,7 +6,8 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-publish = false
+readme = "README.md"
+documentation = "https://docs.rs/emulatron-chips"
 keywords = ["z80", "pio", "ctc", "u855", "u857"]
 categories = ["emulators", "simulation"]
 

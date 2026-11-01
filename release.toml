@@ -1,0 +1,18 @@
+# cargo-release configuration for the whole workspace.
+#
+#   cargo release patch            # dry run: shows what would happen
+#   cargo release patch --execute  # bump, commit, tag vX.Y.Z, push
+#
+# All crates share one version and one tag; pushing the tag starts
+# .github/workflows/release.yml, which builds, attests and publishes.
+# Nothing is published to crates.io from your machine: CI publishes
+# emulatron-chips with trusted publishing; every other crate is
+# `publish = false`.
+shared-version = true
+consolidate-commits = true
+tag-name = "v{{version}}"
+pre-release-commit-message = "Release {{version}}"
+tag-message = "emulatron {{version}}"
+allow-branch = ["main"]
+publish = false
+push = true
