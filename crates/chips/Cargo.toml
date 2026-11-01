@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["z80", "pio", "ctc", "u855", "u857"]
+categories = ["emulators", "simulation"]
 
 [dependencies]
 serde.workspace = true

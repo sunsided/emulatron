@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["lc-80", "poly880", "emulator", "tui", "retrocomputing"]
+categories = ["emulators", "command-line-utilities"]
 
 [[bin]]
 name = "emulatron"

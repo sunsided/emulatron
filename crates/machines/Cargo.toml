@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["lc-80", "poly880", "z80", "emulator", "retrocomputing"]
+categories = ["emulators"]
 
 [dependencies]
 u880.workspace = true

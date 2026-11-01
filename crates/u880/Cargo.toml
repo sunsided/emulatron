@@ -5,6 +5,10 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["z80", "u880", "cpu", "emulator", "disassembler"]
+categories = ["emulators"]
 
 [dependencies]
 serde.workspace = true
