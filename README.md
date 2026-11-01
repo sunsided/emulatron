@@ -34,7 +34,9 @@ Next to the faceplates there's a disassembly at PC, all registers and flags, the
 
 ## In the browser
 
-The same emulator, compiled to WebAssembly, also runs as a web page: the machines are drawn as SVG and you switch between them with the photo cards at the top. Keys are held for as long as you hold them (keyboard or mouse), and the internals sit right next to the device: registers and disassembly with clickable breakpoints, the bus trace (plus bus LEDs for the LC-80, which never had any), PIO pins and CTC channels with the interrupt daisy chain, and a memory view. Programs can be typed in with autotype, and states saved in the browser or downloaded as files.
+**Try it: [sunsided.github.io/emulatron](https://sunsided.github.io/emulatron/)**
+
+The same emulator, compiled to WebAssembly, also runs as a web page: the machines are drawn as SVG and you switch between them with the photo cards at the top. Keys are held for as long as you hold them (keyboard or mouse), and the internals sit right next to the device: registers and disassembly with clickable breakpoints, the bus trace (plus bus LEDs for the LC-80, which never had any), PIO pins and CTC channels with the interrupt daisy chain, and a memory view. Programs can be typed in with autotype, and states saved in the browser or downloaded as files. With Sound on you hear the LC-80's piezo (it plays a tune while the banner scrolls) or the POLY880's tape output, rendered from the pin's level changes with cycle accuracy.
 
 <p align="center">
   <img src="docs/screenshots/web-lc80.png" alt="The web version with the LC-80 and its internals" width="49%">
