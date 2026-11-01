@@ -111,8 +111,11 @@ pub trait Machine {
         self.variant().clock_hz
     }
 
-    /// Power-on/RESET key.
+    /// The RES key: a warm start. RAM keeps its contents, so the monitors
+    /// skip their power-on greeting (and the LC-80 its tune).
     fn reset(&mut self);
+    /// Switch off and on again: RAM is cleared, then a reset follows.
+    fn power_cycle(&mut self);
     /// Execute one instruction; returns T-states.
     fn step(&mut self) -> u32;
 

@@ -403,6 +403,11 @@ impl Machine for Poly880 {
         self.cpu.set_nmi(nmi);
     }
 
+    fn power_cycle(&mut self) {
+        self.board.ram.fill(0);
+        self.reset();
+    }
+
     fn step(&mut self) -> u32 {
         if self.pressed[23] {
             self.cpu.t += 4;

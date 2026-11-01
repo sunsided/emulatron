@@ -410,6 +410,11 @@ impl Machine for Lc80 {
         self.board.update_outputs(t);
     }
 
+    fn power_cycle(&mut self) {
+        self.board.ram.fill(0);
+        self.reset();
+    }
+
     fn step(&mut self) -> u32 {
         if self.reset_held() {
             // /RESET held low: the CPU idles, the bus floats.

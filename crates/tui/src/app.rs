@@ -47,6 +47,7 @@ pub enum Action {
     ToggleView,
     Diagram,
     Sound,
+    Power,
     Quit,
 }
 
@@ -453,6 +454,7 @@ impl App {
             KeyCode::Char('c' | 'q') if ctrl => self.quit = true,
             KeyCode::Char('b') if ctrl => self.action(Action::Diagram),
             KeyCode::Char('s') if ctrl => self.action(Action::Sound),
+            KeyCode::Char('p') if ctrl => self.action(Action::Power),
             KeyCode::Esc => {
                 if self.help {
                     self.help = false;
@@ -537,6 +539,14 @@ impl App {
             }
             Action::Diagram => self.diagram = !self.diagram,
             Action::Sound => self.toggle_sound(),
+            Action::Power => {
+                self.emu.autotype.cancel(self.emu.machine.as_mut());
+                self.emu.machine.power_cycle();
+                self.emu.machine.trace_mut().clear();
+                self.cycle_step = None;
+                self.running = true;
+                self.notify("switched off and on again (cold start)");
+            }
             Action::Quit => self.quit = true,
         }
     }

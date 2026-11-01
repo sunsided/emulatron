@@ -205,6 +205,24 @@ fn lc80_monitor_keys_after_banner_only() {
     assert!(text(&mut e).starts_with("2101"), "address advanced by +");
 }
 
+/// RES is a warm start: the monitor finds its data in RAM and skips the
+/// greeting; only a power cycle brings the banner and tune back.
+#[test]
+fn lc80_res_is_warm_power_cycle_is_cold() {
+    let Some(mut e) = emu("lc80") else { return };
+    let toggles = |e: &mut Emulator| {
+        let before = e.machine.tape().toggles;
+        let c = ms(e, 16_000);
+        e.run(c);
+        e.machine.tape().toggles - before
+    };
+    assert!(toggles(&mut e) > 5_000, "power-on greets");
+    e.machine.reset();
+    assert!(toggles(&mut e) < 10, "RES does not");
+    e.machine.power_cycle();
+    assert!(toggles(&mut e) > 5_000, "a power cycle does again");
+}
+
 /// The LC-80 plays a tune through the piezo (PIO1 PB1) while its banner
 /// scrolls; the audio log turns those pin changes into samples.
 #[test]
