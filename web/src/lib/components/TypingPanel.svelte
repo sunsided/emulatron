@@ -16,8 +16,9 @@
 		.map(([path, text]) => ({ name: path.split('/').pop()!.replace(/\.txt$/, ''), text }))
 	);
 
+	// Start with the hello example the first time this machine is shown.
 	// svelte-ignore state_referenced_locally
-	let script = $state(own.find((e) => e.name === 'hello')?.text ?? '');
+	if (!machine.script) machine.script = own.find((e) => e.name === 'hello')?.text ?? '';
 	let error = $state<string | null>(null);
 	const storageKey = $derived(`emulatron:${machine.info.variant}`);
 	// Bumped on save so the derived below re-reads localStorage.
@@ -36,7 +37,7 @@
 	function type() {
 		error = null;
 		try {
-			machine.typeScript(script);
+			machine.typeScript(machine.script);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -88,13 +89,13 @@
 <Sheet title="Typing and states" note="what we once typed in by hand">
 	<label class="pick">
 		Example
-		<select onchange={(e) => (script = own.find((x) => x.name === e.currentTarget.value)?.text ?? script)}>
+		<select onchange={(e) => (machine.script = own.find((x) => x.name === e.currentTarget.value)?.text ?? machine.script)}>
 			{#each own as ex (ex.name)}
 				<option value={ex.name} selected={ex.name === 'hello'}>{ex.name}</option>
 			{/each}
 		</select>
 	</label>
-	<textarea bind:value={script} rows="7" spellcheck="false" aria-label="Autotype script"></textarea>
+	<textarea bind:value={machine.script} rows="7" spellcheck="false" aria-label="Autotype script"></textarea>
 	<p class="hint">
 		Keys by their character, <code>{'{LABEL}'}</code> for any key, <code>{'{wait 500}'}</code> in milliseconds, <code>#</code> for
 		comments.

@@ -36,7 +36,7 @@ Next to the faceplates there's a disassembly at PC, all registers and flags, the
 
 **Try it: [sunsided.github.io/emulatron](https://sunsided.github.io/emulatron/)**
 
-The same emulator, compiled to WebAssembly, also runs as a web page: the machines are drawn as SVG and you switch between them with the photo cards at the top. Keys are held for as long as you hold them (keyboard or mouse), and the internals sit right next to the device: registers and disassembly with clickable breakpoints, the bus trace (plus bus LEDs for the LC-80, which never had any), PIO pins and CTC channels with the interrupt daisy chain, and a memory view. Programs can be typed in with autotype, and states saved in the browser or downloaded as files. With Sound on you hear the LC-80's piezo (it plays a tune while the banner scrolls) or the POLY880's tape output, rendered from the pin's level changes with cycle accuracy.
+The same emulator, compiled to WebAssembly, also runs as a web page: the machines are drawn as SVG and you switch between them with the photo cards at the top. Keys are held for as long as you hold them (keyboard or mouse), and the internals sit right next to the device: registers and disassembly with clickable breakpoints, the bus trace (plus bus LEDs for the LC-80, which never had any), PIO pins and CTC channels with the interrupt daisy chain, and a memory view. Programs can be typed in with autotype, and states saved in the browser or downloaded as files. Programs also travel in and out: download any memory range as a `.bin`, drop a `.bin` (or an autotype `.txt`) onto the machine to load it into RAM or have it typed in through the monitor, or copy a share link with the program in it; opening that link boots the right machine, types the program in and runs it. With Sound on you hear the LC-80's piezo (it plays a tune while the banner scrolls) or the POLY880's tape output, rendered from the pin's level changes with cycle accuracy.
 
 <p align="center">
   <img src="docs/screenshots/web-lc80.png" alt="The web version with the LC-80 and its internals" width="49%">
@@ -96,6 +96,7 @@ The ROMs are in `roms/`; see [`roms/README.md`](roms/README.md) for where they c
 | F11 / F12 | toggle a breakpoint, jump the memory view |
 | Tab | bus trace or memory view |
 | Ctrl-B | block diagram overlay, live |
+| Ctrl-P | power off and on: cold start with cleared RAM (RES is a warm start, so the monitors skip their greeting) |
 | Ctrl-S | sound on/off (system audio, plays at 1× speed; `--sound` starts with it on) |
 | Esc Esc, Ctrl-Q | quit (Esc twice, so a stray press doesn't end your session) |
 

@@ -42,6 +42,8 @@ export interface MachineInfo {
 	keys: KeyInfo[];
 	leds: [string, string][];
 	bus_leds: boolean;
+	ram_start: number;
+	ram_size: number;
 }
 
 export interface Frame {
@@ -208,6 +210,12 @@ export class Machine {
 	glow = $state.raw<Record<string, number>>({});
 	hz = $state(0);
 	message = $state<string | null>(null);
+
+	/** The autotype script being edited (shared by the typing and program panels). */
+	script = $state('');
+
+	/** A program file picked or dropped, waiting to be loaded or typed in. */
+	upload = $state.raw<{ name: string; bytes: Uint8Array } | null>(null);
 
 	/** Speaker (LC-80) or tape output (POLY880) audible. */
 	sound = $state(false);
@@ -393,6 +401,84 @@ export class Machine {
 		this.emu.cancel_autotype();
 	}
 
+	/** Write bytes straight into RAM. */
+	loadBytes(addr: number, bytes: Uint8Array) {
+		this.emu.load_bytes(addr, bytes);
+		this.refreshDebug();
+	}
+
+	/**
+	 * Type bytes in through the monitor, the way it was done back then.
+	 * On a freshly booted LC-80 this first waits for the greeting banner,
+	 * during which the monitor ignores keys.
+	 */
+	typeBytes(addr: number, bytes: Uint8Array, run = false): string {
+		let script = this.emu.enter_script(addr, bytes);
+		if (run) {
+			script +=
+				this.info.family === 'lc80'
+					? `\n{ADR}${hex4(addr)}{EX}   # and run it`
+					: `\n{GO}${hex4(addr)}{EXEC}{EXEC}   # and run it`;
+		}
+		if (this.info.family === 'lc80') {
+			const elapsedMs = (this.emu.cycles() / this.info.clock_hz) * 1000;
+			const wait = Math.ceil(15500 - elapsedMs);
+			if (wait > 0) script = `{wait ${wait}}   # let the banner finish\n${script}`;
+		}
+		this.script = script;
+		this.typeScript(script);
+		return script;
+	}
+
+	/** End address (exclusive) of the program at `start`: up to the first run
+	 * of 16 identical fill bytes (00 or FF), within RAM. */
+	programEnd(start: number): number {
+		const ramEnd = this.info.ram_start + this.info.ram_size;
+		const len = Math.max(0, ramEnd - start);
+		const bytes = this.emu.memory(start, len);
+		for (let i = 0; i + 16 <= bytes.length; i++) {
+			const v = bytes[i];
+			if ((v === 0x00 || v === 0xff) && bytes.subarray(i, i + 16).every((b) => b === v)) return start + i;
+		}
+		return ramEnd;
+	}
+
+	readBytes(start: number, end: number): Uint8Array {
+		return this.emu.memory(start, Math.max(0, end - start));
+	}
+
+	/** A link that boots this machine and types the program in. */
+	shareLink(start: number, bytes: Uint8Array): string {
+		const url = new URL(location.href);
+		url.search = '';
+		url.hash = '';
+		url.searchParams.set('machine', this.info.variant);
+		url.searchParams.set('at', hex4(start));
+		url.searchParams.set('hex', Array.from(bytes, hex2).join(''));
+		url.searchParams.set('run', '1');
+		return url.toString();
+	}
+
+	/** Accept a file from outside: scripts go to the typing panel, anything
+	 * else is treated as a binary program. */
+	async receiveFile(file: File) {
+		if (/\.(txt|atp)$/i.test(file.name)) {
+			this.script = await file.text();
+			this.notify(`Script ${file.name} is ready in the typing panel`);
+		} else {
+			this.upload = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+			this.notify(`${file.name}: ${this.upload.bytes.length} bytes, choose Load or Type it in`);
+		}
+	}
+
+	/** Off and on again: cleared RAM, so the monitor greets you again. */
+	powerCycle() {
+		this.emu.power_cycle();
+		this.leaveCycleMode(true);
+		this.running = true;
+		this.notify('Switched off and on again');
+	}
+
 	reset() {
 		this.emu.reset();
 		this.leaveCycleMode(true);
@@ -418,3 +504,28 @@ export class Machine {
 
 export const hex2 = (v: number) => v.toString(16).toUpperCase().padStart(2, '0');
 export const hex4 = (v: number) => v.toString(16).toUpperCase().padStart(4, '0');
+
+/** A program passed in the page URL (see `Machine.shareLink`). */
+export interface SharedProgram {
+	variant: string;
+	addr: number;
+	bytes: Uint8Array;
+	run: boolean;
+}
+
+export function programFromUrl(url: URL): SharedProgram | null {
+	const variant = url.searchParams.get('machine');
+	const at = url.searchParams.get('at');
+	const hex = url.searchParams.get('hex');
+	if (!variant || !at || !hex || !/^([0-9a-f]{2})+$/i.test(hex)) return null;
+	const addr = parseInt(at, 16);
+	if (Number.isNaN(addr)) return null;
+	const bytes = new Uint8Array(hex.length / 2);
+	for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+	return { variant, addr: addr & 0xffff, bytes, run: url.searchParams.get('run') === '1' };
+}
+
+export function parseHex(text: string): number | null {
+	const v = parseInt(text.trim().replace(/^0x/i, '').replace(/h$/i, ''), 16);
+	return Number.isNaN(v) ? null : v & 0xffff;
+}

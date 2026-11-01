@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
-	import { loadRoms, Machine, type Family, type Variant } from '#lib/emulator.svelte.js';
+	import { loadRoms, Machine, programFromUrl, type Family, type Variant } from '#lib/emulator.svelte.js';
 	import type { RomBundle } from '#lib/wasm/emulatron.js';
 	import DeviceSwitcher from '#lib/components/DeviceSwitcher.svelte';
 	import ControlBar from '#lib/components/ControlBar.svelte';
@@ -11,6 +11,7 @@
 	import ChipsPanel from '#lib/components/ChipsPanel.svelte';
 	import MemoryPanel from '#lib/components/MemoryPanel.svelte';
 	import TypingPanel from '#lib/components/TypingPanel.svelte';
+	import ProgramPanel from '#lib/components/ProgramPanel.svelte';
 
 	let family = $state<Family>('lc80');
 	let roms = $state.raw<RomBundle | null>(null);
@@ -25,7 +26,22 @@
 		.then((r) => {
 			roms = r;
 			variants = r.variants() as Variant[];
-			machines = { lc80: new Machine(r, 'lc80'), poly880: new Machine(r, 'poly880') };
+			const all = r.variants() as Variant[];
+			const shared = programFromUrl(new URL(location.href));
+			const wanted = shared && all.find((v) => v.id === shared.variant && v.available);
+			const pick = (f: Family) => (wanted && wanted.family === f ? wanted.id : f);
+			machines = { lc80: new Machine(r, pick('lc80')), poly880: new Machine(r, pick('poly880')) };
+			if (shared && wanted) {
+				// A shared link: open that machine and type the program in.
+				family = wanted.family;
+				const m = machines[wanted.family]!;
+				try {
+					m.typeBytes(shared.addr, shared.bytes, shared.run);
+					m.notify(`Typing in ${shared.bytes.length} bytes from the link`);
+				} catch (e) {
+					m.notify(e instanceof Error ? e.message : String(e));
+				}
+			}
 		})
 		.catch((e) => (failure = e instanceof Error ? e.message : String(e)));
 
@@ -48,6 +64,16 @@
 		});
 		return () => cancelAnimationFrame(raf);
 	});
+
+	// Program files dropped onto the machine.
+	let dropping = $state(false);
+
+	function drop(e: DragEvent) {
+		e.preventDefault();
+		dropping = false;
+		const file = e.dataTransfer?.files[0];
+		if (file && machine) void machine.receiveFile(file);
+	}
 
 	// Host keyboard: keys are held for as long as you hold them.
 	const held = new Map<string, number>();
@@ -105,7 +131,18 @@
 	{:else}
 		{#key machine}
 			<div class="workspace">
-			<div class="stage" in:fade={{ duration: 220 }}>
+			<div
+				class={['stage', { dropping }]}
+				in:fade={{ duration: 220 }}
+				role="region"
+				aria-label="The machine; drop a program file here"
+				ondragover={(e) => {
+					e.preventDefault();
+					dropping = true;
+				}}
+				ondragleave={() => (dropping = false)}
+				ondrop={drop}
+			>
 				<div class="scroller">
 					<div class={['device', machine.info.family]}>
 						{#if machine.info.family === 'lc80'}
@@ -131,6 +168,7 @@
 				<CpuPanel {machine} />
 				<BusPanel {machine} />
 				<ChipsPanel {machine} />
+				<ProgramPanel {machine} />
 				<TypingPanel {machine} />
 				<MemoryPanel {machine} />
 			</div>
@@ -199,6 +237,10 @@
 		display: grid;
 		gap: 0.9rem;
 		min-width: 0;
+	}
+	.stage.dropping .device {
+		outline: 3px dashed var(--orange);
+		outline-offset: 6px;
 	}
 	.scroller {
 		overflow-x: auto;

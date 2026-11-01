@@ -55,7 +55,8 @@
 	</div>
 
 	<div class="group">
-		<button onclick={() => machine.reset()}>RES</button>
+		<button onclick={() => machine.powerCycle()} title="Switch off and on: cold start with cleared RAM">Power</button>
+		<button onclick={() => machine.reset()} title="Warm start: RAM keeps its contents">RES</button>
 		<button onclick={() => tap(nmiLabel)}>{nmiLabel}</button>
 	</div>
 

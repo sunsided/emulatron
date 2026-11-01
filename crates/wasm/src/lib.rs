@@ -112,6 +112,9 @@ struct InfoDto {
     keypad_cols: u8,
     leds: Vec<(&'static str, &'static str)>,
     bus_leds: bool,
+    /// User RAM: first address and size in bytes.
+    ram_start: u16,
+    ram_size: usize,
 }
 
 fn color_name(c: KeyColor) -> &'static str {
@@ -318,6 +321,12 @@ impl WebEmu {
                 .map(|(n, c)| (*n, color_name(*c)))
                 .collect(),
             bus_leds: info.bus_leds,
+            ram_start: if info.family == "lc80" {
+                0x2000
+            } else {
+                0x4000
+            },
+            ram_size: v.ram_size,
         })
     }
 
@@ -591,8 +600,20 @@ impl WebEmu {
         self.emu.machine.reset();
     }
 
+    /// Switch off and on: cleared RAM, cold start.
+    pub fn power_cycle(&mut self) {
+        self.emu.autotype.cancel(self.emu.machine.as_mut());
+        self.emu.machine.power_cycle();
+        self.emu.machine.trace_mut().clear();
+    }
+
     pub fn type_script(&mut self, script: &str) -> Result<(), JsError> {
         self.emu.type_script(script).map_err(|e| JsError::new(&e))
+    }
+
+    /// The autotype script that enters `bytes` at `addr` through the monitor.
+    pub fn enter_script(&self, addr: u16, bytes: &[u8]) -> String {
+        emulatron_machines::autotype::enter_bytes(self.emu.machine.info().family, addr, bytes)
     }
 
     pub fn type_bytes(&mut self, addr: u16, bytes: &[u8]) -> Result<(), JsError> {
