@@ -1,0 +1,19 @@
+[package]
+name = "emulatron-tui"
+description = "Terminal front-end for the LC-80 and POLY880 emulators"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "emulatron"
+path = "src/main.rs"
+
+[dependencies]
+u880.workspace = true
+emulatron-chips.workspace = true
+emulatron-machines.workspace = true
+ratatui = "0.30"
+clap = { version = "4", features = ["derive", "env"] }
+anyhow = "1"
