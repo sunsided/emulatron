@@ -13,6 +13,7 @@ use wasm_bindgen::prelude::*;
 use emulatron_chips::ctc::{CTRL_COUNTER, CTRL_INT_ENABLE, ChannelState};
 use emulatron_chips::{DaisyDevice, IrqState, PortId};
 use emulatron_machines::roms::{self, RomImages};
+use emulatron_machines::tape::AudioLog;
 use emulatron_machines::trace::CycleKind;
 use emulatron_machines::{Emulator, KeyColor, KeyWire, Region, StopReason, create};
 use u880::disasm::disassemble;
@@ -567,6 +568,23 @@ impl WebEmu {
             },
             daisy,
         })
+    }
+
+    /// Start or stop collecting the speaker/tape output for audio.
+    pub fn set_audio(&mut self, on: bool) {
+        let now = self.emu.machine.cycles();
+        let tape = self.emu.machine.tape();
+        tape.audio = on.then(|| AudioLog::new(now, tape.out_level));
+    }
+
+    /// Samples (mono, -1..1) of the speaker since the previous call.
+    pub fn take_audio(&mut self, sample_rate: f64) -> Vec<f32> {
+        let now = self.emu.machine.cycles();
+        let clock = self.emu.machine.clock_hz();
+        match &mut self.emu.machine.tape().audio {
+            Some(a) => a.render(now, clock, sample_rate, 0.2, 0.25),
+            None => Vec::new(),
+        }
     }
 
     pub fn reset(&mut self) {

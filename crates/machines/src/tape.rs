@@ -28,6 +28,73 @@ pub struct Tape {
     play_level: bool,
     /// Output toggles since power-on (speaker activity indicator).
     pub toggles: u64,
+    /// Level changes for audio playback; only collected while enabled.
+    #[serde(skip)]
+    pub audio: Option<AudioLog>,
+}
+
+/// Output level changes waiting to be rendered as audio samples.
+#[derive(Clone, Debug, Default)]
+pub struct AudioLog {
+    edges: std::collections::VecDeque<u64>,
+    /// T-state up to which samples have been rendered.
+    rendered_t: f64,
+    level: bool,
+}
+
+/// Keep at most this many pending level changes (a few seconds of tones).
+const AUDIO_EDGE_CAP: usize = 1 << 17;
+
+impl AudioLog {
+    pub fn new(now: u64, level: bool) -> Self {
+        AudioLog {
+            edges: Default::default(),
+            rendered_t: now as f64,
+            level,
+        }
+    }
+
+    /// Render the pin level from the last call up to `now` as samples of a
+    /// square wave (+/- `amp`). Gaps longer than `max_s` seconds (e.g. after
+    /// a pause) are skipped instead of rendered.
+    pub fn render(
+        &mut self,
+        now: u64,
+        clock_hz: u32,
+        sample_rate: f64,
+        amp: f32,
+        max_s: f64,
+    ) -> Vec<f32> {
+        let step = clock_hz as f64 / sample_rate;
+        let span = now as f64 - self.rendered_t;
+        if span > max_s * clock_hz as f64 {
+            // Too far behind: jump ahead, applying the skipped level changes.
+            let skip_to = now as f64 - max_s * clock_hz as f64;
+            while let Some(&e) = self.edges.front() {
+                if e as f64 > skip_to {
+                    break;
+                }
+                self.edges.pop_front();
+                self.level = !self.level;
+            }
+            self.rendered_t = skip_to;
+        }
+        let n = ((now as f64 - self.rendered_t) / step).max(0.0) as usize;
+        let mut out = Vec::with_capacity(n);
+        for _ in 0..n {
+            let t = self.rendered_t;
+            while let Some(&e) = self.edges.front() {
+                if e as f64 > t {
+                    break;
+                }
+                self.edges.pop_front();
+                self.level = !self.level;
+            }
+            out.push(if self.level { amp } else { -amp });
+            self.rendered_t += step;
+        }
+        out
+    }
 }
 
 impl Default for Tape {
@@ -41,6 +108,7 @@ impl Default for Tape {
             play_t: 0,
             play_level: false,
             toggles: 0,
+            audio: None,
         }
     }
 }
@@ -70,6 +138,11 @@ impl Tape {
         }
         self.out_level = level;
         self.toggles += 1;
+        if let Some(a) = &mut self.audio
+            && a.edges.len() < AUDIO_EDGE_CAP
+        {
+            a.edges.push_back(t);
+        }
         if self.state == TapeState::Recording {
             let dt = t.saturating_sub(self.last_out_t).min(u32::MAX as u64) as u32;
             self.edges.push(dt);

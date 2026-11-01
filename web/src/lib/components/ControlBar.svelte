@@ -44,6 +44,17 @@
 	</div>
 
 	<div class="group">
+		<button
+			class={{ on: machine.sound }}
+			aria-pressed={machine.sound}
+			onclick={() => machine.toggleSound()}
+			title={poly ? 'The tape output, as the data recorder played it' : 'The piezo speaker'}
+		>
+			Sound
+		</button>
+	</div>
+
+	<div class="group">
 		<button onclick={() => machine.reset()}>RES</button>
 		<button onclick={() => tap(nmiLabel)}>{nmiLabel}</button>
 	</div>

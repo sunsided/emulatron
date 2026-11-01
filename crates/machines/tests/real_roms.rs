@@ -204,3 +204,38 @@ fn lc80_monitor_keys_after_banner_only() {
     assert_eq!(e.machine.peek(0x2100), 0x5A);
     assert!(text(&mut e).starts_with("2101"), "address advanced by +");
 }
+
+/// The LC-80 plays a tune through the piezo (PIO1 PB1) while its banner
+/// scrolls; the audio log turns those pin changes into samples.
+#[test]
+fn lc80_boot_tune_reaches_the_speaker() {
+    use emulatron_machines::tape::AudioLog;
+    let Some(mut e) = emu("lc80") else { return };
+    let level = e.machine.tape().out_level;
+    e.machine.tape().audio = Some(AudioLog::new(0, level));
+    let mut changes = 0;
+    for _ in 0..15 {
+        let c = ms(&e, 1_000);
+        e.run(c);
+        let now = e.machine.cycles();
+        let clock = e.machine.clock_hz();
+        let samples = e
+            .machine
+            .tape()
+            .audio
+            .as_mut()
+            .unwrap()
+            .render(now, clock, 44_100.0, 0.2, 2.0);
+        assert!(samples.len() >= 44_000, "a second of audio per second");
+        changes += samples.windows(2).filter(|w| w[0] != w[1]).count();
+    }
+    let toggles = e.machine.tape().toggles;
+    assert!(
+        toggles > 5_000,
+        "the banner plays a tune: {toggles} toggles"
+    );
+    assert!(
+        changes > 5_000,
+        "and it is audible: {changes} level changes"
+    );
+}

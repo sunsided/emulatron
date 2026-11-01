@@ -124,6 +124,46 @@ export interface Debug {
 
 let bundle: Promise<RomBundle> | null = null;
 
+// ---- audio ---------------------------------------------------------------
+// One shared chain: the pin's square wave goes through a high-pass (removes
+// the DC of an idle pin) and a soft low-pass (a piezo is no hi-fi speaker).
+
+let audioCtx: AudioContext | null = null;
+let audioIn: AudioNode | null = null;
+let nextStart = 0;
+
+function audio(): AudioContext {
+	if (!audioCtx) {
+		audioCtx = new AudioContext();
+		const hp = audioCtx.createBiquadFilter();
+		hp.type = 'highpass';
+		hp.frequency.value = 40;
+		const lp = audioCtx.createBiquadFilter();
+		lp.type = 'lowpass';
+		lp.frequency.value = 6500;
+		const gain = audioCtx.createGain();
+		gain.gain.value = 0.5;
+		hp.connect(lp).connect(gain).connect(audioCtx.destination);
+		audioIn = hp;
+	}
+	return audioCtx;
+}
+
+function play(samples: Float32Array) {
+	const ctx = audioCtx;
+	if (!ctx || !audioIn || samples.length === 0) return;
+	const buffer = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+	buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
+	const src = ctx.createBufferSource();
+	src.buffer = buffer;
+	src.connect(audioIn);
+	// Queue chunks back to back with a little latency; resync if we drift.
+	let start = Math.max(ctx.currentTime + 0.04, nextStart);
+	if (start - ctx.currentTime > 0.25) start = ctx.currentTime + 0.04;
+	src.start(start);
+	nextStart = start + buffer.duration;
+}
+
 /** Load the wasm module and all ROM files (once). */
 export function loadRoms(): Promise<RomBundle> {
 	bundle ??= (async () => {
@@ -169,6 +209,9 @@ export class Machine {
 	hz = $state(0);
 	message = $state<string | null>(null);
 
+	/** Speaker (LC-80) or tape output (POLY880) audible. */
+	sound = $state(false);
+
 	/** POLY880 M CYCL mode: reveal one bus cycle per CYCL press. */
 	cycleMode = $state(false);
 	currentCycle = $state.raw<BusCycle | null>(null);
@@ -189,6 +232,7 @@ export class Machine {
 
 	destroy() {
 		clearTimeout(this.#messageTimer);
+		this.emu.set_audio(false);
 		this.emu.free();
 	}
 
@@ -204,6 +248,11 @@ export class Machine {
 		if (active) {
 			const cycles = this.info.clock_hz * Math.min(dt, 0.1) * this.speed;
 			if (!this.emu.run(cycles)) this.running = false;
+			if (this.sound && audioCtx) {
+				const samples = this.emu.take_audio(audioCtx.sampleRate);
+				// Other speeds would change the pitch; stay quiet there.
+				if (this.speed === 1) play(samples);
+			}
 		}
 		const frame = this.emu.frame(active) as Frame;
 		if (frame.breakpoint !== null) {
@@ -258,6 +307,15 @@ export class Machine {
 		lines[LINE.INT] = f.bus[LINE.INT];
 		lines[LINE.NMI] = f.bus[LINE.NMI];
 		return lines;
+	}
+
+	toggleSound() {
+		this.sound = !this.sound;
+		if (this.sound) {
+			const ctx = audio();
+			void ctx.resume();
+		}
+		this.emu.set_audio(this.sound);
 	}
 
 	toggleRun() {

@@ -100,6 +100,48 @@ fn tape_records_and_plays_back_edges() {
 }
 
 #[test]
+fn audio_log_renders_a_square_wave() {
+    use emulatron_machines::tape::AudioLog;
+    // 1 MHz clock, 10 kHz sample rate: 100 T-states per sample.
+    let mut tape = Tape::default();
+    tape.audio = Some(AudioLog::new(0, false));
+    // A 1 kHz tone: toggle every 500 T-states.
+    for i in 1..=20u64 {
+        tape.output(i * 500, i % 2 == 1);
+    }
+    let s = tape
+        .audio
+        .as_mut()
+        .unwrap()
+        .render(10_000, 1_000_000, 10_000.0, 0.5, 1.0);
+    assert_eq!(s.len(), 100);
+    // 5 samples low, 5 high, ... (edge at 500 is applied to the sample at 500)
+    assert_eq!(
+        &s[..12],
+        &[
+            -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, -0.5, -0.5
+        ]
+    );
+    // Nothing new: nothing rendered.
+    assert!(
+        tape.audio
+            .as_mut()
+            .unwrap()
+            .render(10_000, 1_000_000, 10_000.0, 0.5, 1.0)
+            .is_empty()
+    );
+}
+
+#[test]
+fn audio_log_skips_long_gaps() {
+    use emulatron_machines::tape::AudioLog;
+    let mut log = AudioLog::new(0, false);
+    // Ten seconds later at 1 MHz, but only 0.1 s may be rendered.
+    let s = log.render(10_000_000, 1_000_000, 8_000.0, 0.5, 0.1);
+    assert_eq!(s.len(), 800);
+}
+
+#[test]
 fn tape_counts_toggles_without_recording() {
     let mut tape = Tape::default();
     tape.output(10, true);
