@@ -1,0 +1,23 @@
+[package]
+name = "emulatron-wasm"
+description = "WebAssembly bindings for the LC-80 and POLY880 emulators"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["lc-80", "poly880", "emulator", "wasm", "retrocomputing"]
+categories = ["emulators", "wasm"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+u880.workspace = true
+emulatron-chips.workspace = true
+emulatron-machines.workspace = true
+serde.workspace = true
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
