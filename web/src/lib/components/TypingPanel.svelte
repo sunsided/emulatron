@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Machine } from '#lib/emulator.svelte.js';
 	import Sheet from './Sheet.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.js';
 
 	let { machine }: { machine: Machine } = $props();
 
@@ -108,16 +109,16 @@
 			</span>
 			<span>{progress[1] - progress[0]} / {progress[1]}</span>
 		{:else}
-			<button class="primary" onclick={type}>Type it in</button>
+			<button class="primary" {@attach tooltip('Press the keys in the script, one after the other')} onclick={type}>Type the script</button>
 		{/if}
 	</div>
 	{#if error}<p class="error">{error}</p>{/if}
 
 	<h3>Save state</h3>
 	<div class="row">
-		<button onclick={save}>Save</button>
-		<button onclick={restore} disabled={!hasSaved}>Restore</button>
-		<button onclick={download}>Download</button>
+		<button {@attach tooltip('Remember the whole machine state in this browser')} onclick={save}>Save</button>
+		<button {@attach tooltip('Go back to the state saved in this browser')} onclick={restore} disabled={!hasSaved}>Restore</button>
+		<button {@attach tooltip('Save the machine state as a file')} onclick={download}>Download</button>
 		<label class="upload">Load file<input type="file" accept=".json,application/json" onchange={upload} /></label>
 	</div>
 </Sheet>

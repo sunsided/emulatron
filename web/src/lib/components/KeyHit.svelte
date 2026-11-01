@@ -3,6 +3,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Machine } from '#lib/emulator.svelte.js';
+	import { tooltip } from '#lib/tooltip.svelte.js';
 
 	// A pressable key on a faceplate: holds the machine key while the pointer
 	// (or Enter/Space on a focused key) is down.
@@ -14,6 +15,7 @@
 		y,
 		w,
 		h,
+		tip,
 		children
 	}: {
 		machine: Machine;
@@ -23,6 +25,7 @@
 		y: number;
 		w: number;
 		h: number;
+		tip?: string;
 		children: Snippet;
 	} = $props();
 
@@ -69,6 +72,7 @@
 	onkeydown={keydown}
 	onkeyup={keyup}
 	onblur={up}
+	{@attach tooltip(tip)}
 >
 	<rect {x} {y} width={w} height={h} fill="transparent" />
 	{@render children()}

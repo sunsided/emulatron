@@ -4,6 +4,7 @@
 	import Led from './Led.svelte';
 	import SvgDefs from './SvgDefs.svelte';
 	import KeyHit from './KeyHit.svelte';
+	import { keyTip } from '#lib/keyhelp.js';
 
 	let { machine }: { machine: Machine } = $props();
 
@@ -169,7 +170,7 @@
 			{@const y = KY + key.row * PY}
 			{@const down = frame?.keys_down[i] ?? false}
 			{@const [face, edge] = keyColor[key.color] ?? keyColor.cream}
-			<KeyHit {machine} index={i} label={key.label} x={x - 2} y={y - 2} w={32} h={24}>
+			<KeyHit {machine} index={i} label={key.label} tip={keyTip(machine.info.family, key)} x={x - 2} y={y - 2} w={32} h={24}>
 				<text x={x + 13} y={y + 6} class="key-legend">{key.label}</text>
 				<rect x={x} y={y + 9} width="28" height="12" rx="2" fill={edge} />
 				<rect x={x} y={y + (down ? 10 : 8)} width="28" height="11" rx="2" fill={down ? '#f6d873' : face} />

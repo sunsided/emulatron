@@ -4,6 +4,7 @@
 	import Led from './Led.svelte';
 	import SvgDefs from './SvgDefs.svelte';
 	import KeyHit from './KeyHit.svelte';
+	import { keyTip } from '#lib/keyhelp.js';
 
 	let { machine }: { machine: Machine } = $props();
 
@@ -165,7 +166,7 @@
 		{@const down = frame?.keys_down[i] || (key.label === 'M CYCL' && machine.cycleMode)}
 		{@const [face, edge, ink] = KEY_FACE[key.color] ?? KEY_FACE.grey}
 		{@const lines = key.label === 'M CYCL' ? ['M', 'CYCL'] : [key.label]}
-		<KeyHit {machine} index={i} label={key.label} x={x} y={y} w={w} h={40}>
+		<KeyHit {machine} index={i} label={key.label} tip={keyTip(machine.info.family, key)} x={x} y={y} w={w} h={40}>
 			<rect {x} y={y + 3} width={w} height="37" rx="5" fill={edge} />
 			<rect {x} y={y + (down ? 3 : 0)} width={w} height="36" rx="5" fill={down ? '#ffd76a' : face} />
 			{#each lines as l, li (li)}

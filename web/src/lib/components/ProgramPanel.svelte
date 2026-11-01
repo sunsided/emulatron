@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { hex4, parseHex, type Machine } from '#lib/emulator.svelte.js';
 	import Sheet from './Sheet.svelte';
+	import { tooltip } from '#lib/tooltip.svelte.js';
 
 	let { machine }: { machine: Machine } = $props();
 
@@ -10,6 +11,8 @@
 	// svelte-ignore state_referenced_locally
 	let to = $state(hex4(machine.programEnd(ram)));
 	let at = $state(hex4(ram));
+	let andRun = $state(true);
+	const progress = $derived(machine.frame?.autotype);
 	let copied = $state(false);
 
 	const range = $derived.by(() => {
@@ -32,6 +35,13 @@
 		a.download = `${machine.info.variant}-${hex4(range.start)}-${hex4(range.end - 1)}.bin`;
 		a.click();
 		URL.revokeObjectURL(a.href);
+	}
+
+	function run() {
+		const addr = parseHex(at);
+		if (addr === null) return;
+		machine.runAt(addr);
+		machine.notify(`Starting the program at ${hex4(addr)}h`);
 	}
 
 	async function share() {
@@ -63,8 +73,8 @@
 				machine.loadBytes(addr, up.bytes);
 				machine.notify(`${up.name} loaded at ${hex4(addr)}h`);
 			} else {
-				machine.typeBytes(addr, up.bytes);
-				machine.notify(`Typing ${up.name} in at ${hex4(addr)}h`);
+				machine.typeBytes(addr, up.bytes, andRun);
+				machine.notify(`Typing ${up.name} in at ${hex4(addr)}h${andRun ? ', then running it' : ''}`);
 			}
 		} catch (err) {
 			machine.notify(err instanceof Error ? err.message : String(err));
@@ -77,11 +87,11 @@
 	<div class="row">
 		<label>From <input bind:value={from} size="5" spellcheck="false" /></label>
 		<label>to <input bind:value={to} size="5" spellcheck="false" /></label>
-		<button type="button" onclick={detect} title="Find where the program in RAM ends">Detect end</button>
+		<button type="button" {@attach tooltip('Find where the program in RAM ends: at the first run of 16 empty bytes')} onclick={detect}>Detect end</button>
 	</div>
 	<div class="row">
-		<button type="button" onclick={download} disabled={!range}>Download .bin</button>
-		<button type="button" onclick={share} disabled={!range}>{copied ? 'Link copied' : 'Copy share link'}</button>
+		<button type="button" {@attach tooltip('Save this memory range as a binary file')} onclick={download} disabled={!range}>Download .bin</button>
+		<button type="button" {@attach tooltip('Copy a link that opens this machine, types the program in and runs it')} onclick={share} disabled={!range}>{copied ? 'Link copied' : 'Copy share link'}</button>
 		{#if range}<span class="size">{range.end - range.start} bytes</span>{/if}
 	</div>
 
@@ -94,10 +104,23 @@
 	{#if machine.upload}
 		<div class="row">
 			<label>At <input bind:value={at} size="5" spellcheck="false" /></label>
-			<button type="button" onclick={() => place('load')}>Load into RAM</button>
-			<button type="button" class="primary" onclick={() => place('type')}>Type it in</button>
+			<button type="button" {@attach tooltip('Write the bytes straight into RAM, no typing')} onclick={() => place('load')}>Load into RAM</button>
+			<button type="button" class="primary" {@attach tooltip('Type the bytes in through the monitor keys, like back then')} onclick={() => place('type')}>Type it in</button>
+			<label class="check"><input type="checkbox" bind:checked={andRun} /> and run it</label>
 		</div>
 	{/if}
+	{#if progress}
+		<div class="row">
+			<span class="bar"><span style:width="{((progress[1] - progress[0]) / progress[1]) * 100}%"></span></span>
+			<span class="size">{progress[1] - progress[0]} / {progress[1]} keys</span>
+			<button type="button" onclick={() => machine.cancelTyping()}>Stop typing</button>
+		</div>
+	{/if}
+	<div class="row">
+		<label>Start at <input bind:value={at} size="5" spellcheck="false" /></label>
+		<button type="button" {@attach tooltip('Press the keys that start the program at this address')} onclick={run}>Run</button>
+		<span class="size">presses {machine.info.family === 'lc80' ? 'ADR · address · EX' : 'GO · address · EXEC · EXEC'}</span>
+	</div>
 </Sheet>
 
 <style>
@@ -150,6 +173,23 @@
 	.primary {
 		background: var(--orange);
 		border-color: var(--orange-deep);
+	}
+	.bar {
+		flex: 1;
+		min-width: 4rem;
+		height: 0.5rem;
+		background: rgb(34 38 30 / 0.1);
+	}
+	.bar span {
+		display: block;
+		height: 100%;
+		background: var(--teal);
+	}
+	.check {
+		color: var(--ink);
+	}
+	.check input {
+		accent-color: var(--orange);
 	}
 	.file input {
 		position: absolute;

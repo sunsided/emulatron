@@ -401,6 +401,18 @@ export class Machine {
 		this.emu.cancel_autotype();
 	}
 
+	/** The monitor key sequence that starts a program at `addr`. */
+	runScript(addr: number): string {
+		return this.info.family === 'lc80'
+			? `{ADR}${hex4(addr)}{EX}   # run it`
+			: `{GO}${hex4(addr)}{EXEC}{EXEC}   # run it (the first EXEC asks for a breakpoint)`;
+	}
+
+	/** Press the keys that start the program at `addr`, as you would by hand. */
+	runAt(addr: number) {
+		this.typeScript(this.runScript(addr));
+	}
+
 	/** Write bytes straight into RAM. */
 	loadBytes(addr: number, bytes: Uint8Array) {
 		this.emu.load_bytes(addr, bytes);
@@ -414,18 +426,13 @@ export class Machine {
 	 */
 	typeBytes(addr: number, bytes: Uint8Array, run = false): string {
 		let script = this.emu.enter_script(addr, bytes);
-		if (run) {
-			script +=
-				this.info.family === 'lc80'
-					? `\n{ADR}${hex4(addr)}{EX}   # and run it`
-					: `\n{GO}${hex4(addr)}{EXEC}{EXEC}   # and run it`;
-		}
+		if (run) script += `\n${this.runScript(addr)}`;
 		if (this.info.family === 'lc80') {
 			const elapsedMs = (this.emu.cycles() / this.info.clock_hz) * 1000;
 			const wait = Math.ceil(15500 - elapsedMs);
 			if (wait > 0) script = `{wait ${wait}}   # let the banner finish\n${script}`;
 		}
-		this.script = script;
+		// Leave the typing panel's script alone: it belongs to the user.
 		this.typeScript(script);
 		return script;
 	}

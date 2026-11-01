@@ -12,6 +12,7 @@
 	import MemoryPanel from '#lib/components/MemoryPanel.svelte';
 	import TypingPanel from '#lib/components/TypingPanel.svelte';
 	import ProgramPanel from '#lib/components/ProgramPanel.svelte';
+	import Tooltip from '#lib/components/Tooltip.svelte';
 
 	let family = $state<Family>('lc80');
 	let roms = $state.raw<RomBundle | null>(null);
@@ -114,6 +115,8 @@
 </script>
 
 <svelte:window onkeydown={keydown} onkeyup={keyup} onblur={releaseAll} />
+
+<Tooltip />
 
 <header class="masthead">
 	<div class="title">
