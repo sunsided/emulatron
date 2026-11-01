@@ -123,6 +123,9 @@ Each [release](https://github.com/sunsided/emulatron/releases) has the Linux bin
 
 ```sh
 gh attestation verify emulatron-v0.1.0-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron
+# the SBOM attestation (CycloneDX for the wasm: --predicate-type https://cyclonedx.org/bom)
+gh attestation verify emulatron-v0.1.0-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron \
+  --predicate-type https://spdx.dev/Document/v2.3
 ```
 
 The PIO/CTC crate is on crates.io as [`emulatron-chips`](https://crates.io/crates/emulatron-chips).

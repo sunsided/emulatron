@@ -188,7 +188,11 @@ jobs:
           Every binary has a build provenance and an SBOM attestation. To verify:
 
           ```sh
+          # build provenance
           gh attestation verify emulatron-*-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron
+          # SBOM (SPDX for the Linux binary, CycloneDX for the wasm)
+          gh attestation verify emulatron-*-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron --predicate-type https://spdx.dev/Document/v2.3
+          gh attestation verify emulatron-wasm-*.wasm --repo sunsided/emulatron --predicate-type https://cyclonedx.org/bom
           sha256sum -c SHA256SUMS
           ```
 
