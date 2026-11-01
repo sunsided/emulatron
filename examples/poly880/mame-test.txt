@@ -1,0 +1,2 @@
+# Enter 11..99 from 4000h on, then go back to 4000h; EXEC steps through.
+{MEM}4000{EXEC}11{EXEC}22{EXEC}33{EXEC}44{EXEC}55{EXEC}66{EXEC}77{EXEC}88{EXEC}99{EXEC}{MEM}4000

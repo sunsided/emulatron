@@ -1,0 +1,3 @@
+# Enter 11..99 from 2000h on, then go back to 2000h; press + to step through.
+{wait 15000}   # let the "HALLO USEr OF LC-80" banner finish; keys are ignored meanwhile
+{ADR}2000{DAT}11+22+33+44+55+66+77+88+99+{ADR}2000

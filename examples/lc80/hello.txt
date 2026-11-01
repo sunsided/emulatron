@@ -1,0 +1,19 @@
+# LC-80: type in a program that multiplexes HELLO on the display,
+# then run it. Generated from hello.bin (load at 2000h).
+{wait 15000}   # let the "HALLO USEr OF LC-80" banner finish; keys are ignored meanwhile
+{ADR}2000{DAT}
+F3+3E+0F+D3+F6+3E+0F+D3+
+F7+3E+FF+D3+F5+3E+94+D3+
+F4+3E+7F+D3+F5+06+40+10+
+FE+3E+FF+D3+F5+3E+31+D3+
+F4+3E+BF+D3+F5+06+40+10+
+FE+3E+FF+D3+F5+3E+3D+D3+
+F4+3E+DF+D3+F5+06+40+10+
+FE+3E+FF+D3+F5+3E+3D+D3+
+F4+3E+EF+D3+F5+06+40+10+
+FE+3E+FF+D3+F5+3E+18+D3+
+F4+3E+F7+D3+F5+06+40+10+
+FE+3E+FF+D3+F5+3E+FF+D3+
+F4+3E+FB+D3+F5+06+40+10+
+FE+C3+09+20+
+{ADR}2000{EX}
