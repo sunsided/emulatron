@@ -146,6 +146,17 @@ tasks:
     cmds:
       - cargo clippy --workspace --all-targets -- -D warnings
 
+  lint:workflows:
+    desc: Lint the GitHub Actions workflows (actionlint, zizmor)
+    preconditions:
+      - sh: command -v actionlint
+        msg: "actionlint not found — go install github.com/rhysd/actionlint/cmd/actionlint@latest"
+      - sh: command -v zizmor
+        msg: "zizmor not found — pipx install zizmor (or uv tool install zizmor)"
+    cmds:
+      - actionlint
+      - zizmor .github/workflows/
+
   lint:fix:
     desc: Auto-fix clippy lints, then format
     aliases: [fix]
