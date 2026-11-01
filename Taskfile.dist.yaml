@@ -15,7 +15,8 @@ tasks:
   build:
     desc: Build the workspace (debug)
     preconditions: &cargo
-      - sh: command -v cargo
+      - &cargo_present
+        sh: command -v cargo
         msg: "cargo not found — install Rust from https://rustup.rs/"
     cmds:
       - cargo build --workspace --all-targets
@@ -58,6 +59,49 @@ tasks:
       MS: '{{ .MS | default "15000" }}'
     cmds:
       - cargo run -q --release -p emulatron-tui -- -m {{.MACHINE}} --dump-frame {{.MS}} {{.CLI_ARGS}}
+
+  web:wasm:
+    desc: Build the WebAssembly package for the web front-end
+    preconditions:
+      - *cargo_present
+      - sh: command -v wasm-pack
+        msg: "wasm-pack not found — cargo install wasm-pack"
+    sources:
+      - crates/**/*.rs
+      - crates/**/Cargo.toml
+    generates:
+      - web/src/lib/wasm/emulatron_bg.wasm
+    cmds:
+      - wasm-pack build crates/wasm --target web --release --out-dir ../../web/src/lib/wasm --out-name emulatron
+
+  web:install:
+    desc: Install the web front-end's dependencies (Yarn via corepack)
+    dir: web
+    preconditions: &yarn
+      - sh: command -v corepack
+        msg: "corepack not found — install Node.js 20+ (corepack ships with it)"
+    status:
+      - test -d node_modules
+    cmds:
+      - corepack yarn install
+
+  web:dev:
+    desc: Run the web front-end with hot reload
+    dir: web
+    deps: [web:wasm, web:install]
+    preconditions: *yarn
+    interactive: true
+    cmds:
+      - corepack yarn dev {{.CLI_ARGS}}
+
+  web:build:
+    desc: Build the static web front-end into web/build
+    dir: web
+    deps: [web:wasm, web:install]
+    preconditions: *yarn
+    cmds:
+      - corepack yarn check
+      - corepack yarn build
 
   test:
     desc: Run the test suite (board, chip, CPU and real-ROM tests)

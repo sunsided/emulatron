@@ -1,0 +1,67 @@
+/* Paper and ink of a GDR operating manual; accents from the machines. */
+:root {
+	--paper: #d8dccf;
+	--sheet: #e7eadf;
+	--sheet-edge: #c3c9b8;
+	--ink: #22261e;
+	--ink-soft: #586050;
+	--rule: #b4bba8;
+	--orange: #e2702b;
+	--orange-deep: #b4541a;
+	--teal: #2b8a80;
+	--brown: #5b3626;
+	--seg-on: #8dff6a;
+	--seg-off: #16281a;
+	--focus: #e2702b;
+
+	--font-label: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+	--font-type: 'Courier Prime', 'Courier New', monospace;
+
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-label);
+	font-size: 17px;
+	line-height: 1.4;
+	-webkit-font-smoothing: antialiased;
+}
+
+body {
+	margin: 0;
+	min-height: 100vh;
+	/* faint paper fibre */
+	background-image:
+		radial-gradient(rgb(34 38 30 / 0.035) 1px, transparent 1px),
+		radial-gradient(rgb(255 255 255 / 0.25) 1px, transparent 1px);
+	background-size: 7px 7px, 11px 11px;
+	background-position: 0 0, 3px 5px;
+}
+
+button,
+select,
+input,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+
+:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}
