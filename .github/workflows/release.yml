@@ -1,0 +1,224 @@
+# On a version tag (made by `cargo release ... --execute`): build the Linux
+# binary and the WebAssembly package, generate SBOMs, attest provenance and
+# SBOM for both, publish emulatron-chips to crates.io (trusted publishing),
+# and create a GitHub Release with everything attached.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+# Nothing by default; each job asks for what it needs.
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  binary:
+    name: Linux binary
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the repository
+      id-token: write # sign the attestations
+      attestations: write # store the attestations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: System libraries (ALSA for sound)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev
+
+      - name: Install cargo-auditable
+        uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: cargo-auditable
+
+      - name: Build (with the dependency list embedded)
+        run: cargo auditable build --release --locked -p emulatron-tui
+
+      - name: Package
+        id: package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          name="emulatron-${TAG}-x86_64-unknown-linux-gnu"
+          mkdir -p "dist/${name}"
+          cp target/release/emulatron README.md LICENSE "dist/${name}/"
+          cp -r roms "dist/${name}/"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          rm -r "dist/${name}"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: SBOM from the embedded dependency list
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          file: target/release/emulatron
+          format: spdx-json
+          output-file: dist/${{ steps.package.outputs.name }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            target/release/emulatron
+            dist/${{ steps.package.outputs.name }}.tar.gz
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: |
+            target/release/emulatron
+            dist/${{ steps.package.outputs.name }}.tar.gz
+          sbom-path: dist/${{ steps.package.outputs.name }}.spdx.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binary
+          path: dist/
+          if-no-files-found: error
+
+  wasm:
+    name: WebAssembly package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # check out the repository
+      id-token: write # sign the attestations
+      attestations: write # store the attestations
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain with wasm32 target
+        run: |
+          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
+          rustup default stable
+
+      - name: Install wasm-pack and cargo-cyclonedx
+        uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: wasm-pack,cargo-cyclonedx
+
+      - name: Build
+        env:
+          TAG: ${{ github.ref_name }}
+        run: wasm-pack build crates/wasm --target web --release --out-dir "../../dist/emulatron-wasm-${TAG}" --out-name emulatron
+
+      - name: Package
+        id: package
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          name="emulatron-wasm-${TAG}"
+          rm -f "dist/${name}/.gitignore"
+          cp LICENSE "dist/${name}/"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          cp "dist/${name}/emulatron_bg.wasm" "dist/${name}.wasm"
+          rm -r "dist/${name}"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: SBOM for the wasm crate and its wasm32 dependencies
+        env:
+          NAME: ${{ steps.package.outputs.name }}
+        run: |
+          cd crates/wasm
+          cargo cyclonedx -f json --spec-version 1.5 --target wasm32-unknown-unknown --no-build-deps --override-filename sbom.cdx
+          mv sbom.cdx.json "../../dist/${NAME}.cdx.json"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/${{ steps.package.outputs.name }}.wasm
+            dist/${{ steps.package.outputs.name }}.tar.gz
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: |
+            dist/${{ steps.package.outputs.name }}.wasm
+            dist/${{ steps.package.outputs.name }}.tar.gz
+          sbom-path: dist/${{ steps.package.outputs.name }}.cdx.json
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wasm
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: [binary, wasm]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # create the release and upload its assets
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cat > notes.md <<'EOF'
+          ## Downloads
+
+          - `emulatron-*-x86_64-unknown-linux-gnu.tar.gz`: the terminal version for Linux (x86-64), with the ROMs. Unpack and run `./emulatron`.
+          - `emulatron-wasm-*.tar.gz`: the WebAssembly package for the browser (`emulatron.js` and `emulatron_bg.wasm`); `emulatron-wasm-*.wasm` is the bare module.
+          - `*.spdx.json` / `*.cdx.json`: SBOMs. The Linux one is read from the dependency list `cargo auditable` embeds in the binary.
+
+          Every binary has a build provenance and an SBOM attestation. To verify:
+
+          ```sh
+          gh attestation verify emulatron-*-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron
+          sha256sum -c SHA256SUMS
+          ```
+
+          The ROM dumps are third-party works and not covered by the EUPL-1.2; see `roms/README.md`.
+          EOF
+          gh release create "${TAG}" dist/* --verify-tag --title "emulatron ${TAG}" --notes-file notes.md --generate-notes
+
+  crate:
+    name: Publish emulatron-chips
+    needs: [binary, wasm]
+    runs-on: ubuntu-24.04
+    environment: crates-io
+    permissions:
+      contents: read # check out the repository
+      id-token: write # trusted publishing to crates.io
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Authenticate with crates.io
+        id: auth
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+
+      - name: Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked -p emulatron-chips

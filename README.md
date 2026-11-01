@@ -117,6 +117,18 @@ Autotype scripts are plain text: every character that a key types, `{LABEL}` for
 
 Timing runs on emulated T-states, so a script types the same way at any speed setting (at 10× it even feels like the future). `--type-bin FILE@ADDR` turns a binary into such a script and types it in through the monitor, and `--load FILE@ADDR` skips the ceremony and writes it straight into RAM.
 
+## Releases
+
+Each [release](https://github.com/sunsided/emulatron/releases) has the Linux binary (with the ROMs), the WebAssembly package, an SBOM for each, and `SHA256SUMS`. The Linux binary is built with `cargo auditable`, so its exact dependency list is embedded in it and its SBOM is read from there. Both binaries carry build provenance and SBOM attestations:
+
+```sh
+gh attestation verify emulatron-v0.1.0-x86_64-unknown-linux-gnu.tar.gz --repo sunsided/emulatron
+```
+
+The PIO/CTC crate is on crates.io as [`emulatron-chips`](https://crates.io/crates/emulatron-chips).
+
+Cutting a release is `cargo release patch --execute` (or `minor`, `major`): it bumps the shared workspace version (and the web app's), commits, tags `vX.Y.Z` and pushes; the tag runs `.github/workflows/release.yml`, which builds, attests, publishes `emulatron-chips` with crates.io trusted publishing and creates the GitHub Release.
+
 ## Tests
 
 ```sh
