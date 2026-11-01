@@ -1,6 +1,7 @@
 //! `emulatron` — terminal front-end for the LC-80 and POLY880 emulators.
 
 mod app;
+mod audio;
 mod ui;
 
 use std::path::PathBuf;
@@ -47,6 +48,10 @@ struct Args {
     /// Type a binary in through the monitor keypad: FILE@ADDR (hex).
     #[arg(short = 't', long)]
     type_bin: Vec<String>,
+
+    /// Start with sound on (toggle with Ctrl-S).
+    #[arg(long)]
+    sound: bool,
 
     /// Start with the block diagram overlay open (toggle with Ctrl-B).
     #[arg(long)]
@@ -175,6 +180,10 @@ fn main() -> Result<()> {
     }
     if let Some(ms) = args.dump_frame {
         return dump_frame(&mut app, ms, &args.size, args.html.as_deref());
+    }
+
+    if args.sound {
+        app.toggle_sound();
     }
 
     let mut terminal = ratatui::init();

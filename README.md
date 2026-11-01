@@ -96,6 +96,7 @@ The ROMs are in `roms/`; see [`roms/README.md`](roms/README.md) for where they c
 | F11 / F12 | toggle a breakpoint, jump the memory view |
 | Tab | bus trace or memory view |
 | Ctrl-B | block diagram overlay, live |
+| Ctrl-S | sound on/off (system audio, plays at 1× speed; `--sound` starts with it on) |
 | Esc Esc, Ctrl-Q | quit (Esc twice, so a stray press doesn't end your session) |
 
 ### Monitor cheat sheet

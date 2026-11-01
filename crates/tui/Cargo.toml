@@ -21,3 +21,9 @@ emulatron-machines.workspace = true
 ratatui = "0.30"
 clap = { version = "4", features = ["derive", "env"] }
 anyhow = "1"
+cpal = { version = "0.18", optional = true }
+
+[features]
+default = ["audio"]
+# Speaker/tape output through the system's audio device (ALSA on Linux).
+audio = ["dep:cpal"]

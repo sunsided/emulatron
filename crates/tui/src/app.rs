@@ -10,6 +10,7 @@ use ratatui::crossterm::event::{
 use ratatui::layout::{Position, Rect};
 
 use emulatron_machines::display::DisplayFrame;
+use emulatron_machines::tape::AudioLog;
 use emulatron_machines::trace::{self, BusActivity, BusCycle};
 use emulatron_machines::{Emulator, KeyId, KeyWire, StopReason};
 
@@ -45,6 +46,7 @@ pub enum Action {
     MemAddr,
     ToggleView,
     Diagram,
+    Sound,
     Quit,
 }
 
@@ -92,6 +94,9 @@ pub struct App {
     pub help: bool,
     /// Block diagram overlay (as printed on the POLY880's panel).
     pub diagram: bool,
+    /// Speaker/tape output audible through the system's audio device.
+    pub sound: bool,
+    audio: Option<crate::audio::Audio>,
     pub prompt: Option<Prompt>,
     pub message: Option<(String, Instant)>,
     pub bottom: BottomView,
@@ -134,6 +139,8 @@ impl App {
             quit: false,
             help: false,
             diagram: false,
+            sound: false,
+            audio: None,
             prompt: None,
             message: None,
             bottom: BottomView::Trace,
@@ -189,6 +196,9 @@ impl App {
                 self.notify(format!("breakpoint at {pc:04X}h"));
             }
         }
+
+        let active = self.running && self.cycle_step.is_none();
+        self.feed_audio(active);
 
         let now = Instant::now();
         let dt = now.duration_since(self.last_tick).as_secs_f64();
@@ -442,6 +452,7 @@ impl App {
         match k.code {
             KeyCode::Char('c' | 'q') if ctrl => self.quit = true,
             KeyCode::Char('b') if ctrl => self.action(Action::Diagram),
+            KeyCode::Char('s') if ctrl => self.action(Action::Sound),
             KeyCode::Esc => {
                 if self.help {
                     self.help = false;
@@ -525,7 +536,51 @@ impl App {
                 }
             }
             Action::Diagram => self.diagram = !self.diagram,
+            Action::Sound => self.toggle_sound(),
             Action::Quit => self.quit = true,
+        }
+    }
+
+    pub fn toggle_sound(&mut self) {
+        if self.sound {
+            self.sound = false;
+            self.audio = None;
+            self.emu.machine.tape().audio = None;
+            self.notify("sound off");
+            return;
+        }
+        match crate::audio::Audio::open() {
+            Ok(a) => {
+                let now = self.emu.machine.cycles();
+                let tape = self.emu.machine.tape();
+                tape.audio = Some(AudioLog::new(now, tape.out_level));
+                self.notify(format!(
+                    "sound on ({} Hz, plays at 1× speed)",
+                    a.sample_rate
+                ));
+                self.audio = Some(a);
+                self.sound = true;
+            }
+            Err(e) => self.notify(format!("no sound: {e}")),
+        }
+    }
+
+    /// Hand the speaker samples produced since the last frame to the device.
+    fn feed_audio(&mut self, active: bool) {
+        let Some(audio) = &mut self.audio else { return };
+        if let Some(e) = audio.take_error() {
+            self.message = Some((format!("audio: {e}"), Instant::now()));
+        }
+        let now = self.emu.machine.cycles();
+        let clock = self.emu.machine.clock_hz();
+        let rate = audio.sample_rate as f64;
+        let samples = match &mut self.emu.machine.tape().audio {
+            Some(log) => log.render(now, clock, rate, 0.25, 0.25),
+            None => return,
+        };
+        // Other speeds would bend the pitch; stay quiet there.
+        if active && SPEEDS[self.speed] == 1.0 {
+            audio.push(&samples);
         }
     }
 

@@ -1208,7 +1208,8 @@ fn draw_status(f: &mut Frame, app: &mut App, area: Rect) {
     let help = app.help;
     let trace_view = app.bottom == crate::app::BottomView::Trace;
     let diagram = app.diagram;
-    let buttons: [(&str, &str, Action, bool); 15] = [
+    let sound = app.sound;
+    let buttons: [(&str, &str, Action, bool); 16] = [
         ("F1", "Help ", Action::Help, help),
         (
             "F2",
@@ -1233,6 +1234,7 @@ fn draw_status(f: &mut Frame, app: &mut App, area: Rect) {
             false,
         ),
         ("^B", "Diagram ", Action::Diagram, diagram),
+        ("^S", "Sound ", Action::Sound, sound),
         ("^Q", "Quit ", Action::Quit, false),
     ];
     // Clickable badge + button helper.
@@ -1589,6 +1591,7 @@ fn draw_help(f: &mut Frame, app: &App) {
         )),
         Line::from("F11 toggle breakpoint     F12 memory view address"),
         Line::from("Tab trace / memory        Del cancel autotype"),
+        Line::from("Ctrl-B block diagram      Ctrl-S sound (at 1× speed)"),
         Line::from("Esc Esc / Ctrl-Q quit"),
         Line::from(""),
         Line::from("Autotype syntax: key characters, {LABEL} e.g. {ADR} {EXEC} {RES},"),
