@@ -1,6 +1,6 @@
 # emulatron
 
-Emulators for two learning computers from the GDR, the **LC-80** and the **Poly-Computer 880**, written from scratch in Rust and running in your terminal.
+Emulators for two learning computers from the GDR, the Lerncomputer **LC-80** and the **Poly-Computer 880**, written from scratch in Rust and running in your terminal.
 
 ![The LC-80 booting: "HALLO USEr OF LC-80" scrolls across the display](docs/screenshots/lc80-boot.gif)
 
@@ -32,18 +32,30 @@ Next to the faceplates there's a disassembly at PC, all registers and flags, the
 
 ![The POLY880 in a smaller terminal, with the memory view after typing in 11 22 33 …](docs/screenshots/poly880-memory.png)
 
+## In the browser
+
+The same emulator, compiled to WebAssembly, also runs as a web page: the machines are drawn as SVG and you switch between them with the photo cards at the top. Keys are held for as long as you hold them (keyboard or mouse), and the internals sit right next to the device: registers and disassembly with clickable breakpoints, the bus trace (plus bus LEDs for the LC-80, which never had any), PIO pins and CTC channels with the interrupt daisy chain, and a memory view. Programs can be typed in with autotype, and states saved in the browser or downloaded as files.
+
+<p align="center">
+  <img src="docs/screenshots/web-lc80.png" alt="The web version with the LC-80 and its internals" width="49%">
+  <img src="docs/screenshots/web-poly880.png" alt="The web version with the POLY880, its block diagram lit up" width="49%">
+</p>
+
+The page is styled after the POLY880's operating manual (typewritten text on greyish paper), with the machines' own colours as accents.
+
 ## What's inside
 
 <img src="docs/photos/u880.jpg" alt="A U880D CPU in its 40-pin package" title="U880D (photo: Konstantin Lanzet, CC BY-SA 3.0)" width="280" align="right">
 
-The workspace has four crates:
+The workspace has five crates, plus the web app:
 
 - **`u880`**: a Z80/U880 core that executes one instruction per step but reports every machine cycle (opcode fetch, memory and I/O reads and writes, interrupt acknowledge, refresh) to the bus, with exact T-state counts. It passes ZEXDOC and ZEXALL completely, undocumented flags included, and comes with a disassembler.
 - **`emulatron-chips`**: the U855 PIO (all four modes, including the bit-control interrupt logic), the U857 CTC (timer and counter modes, prescalers, trigger start), and the IEI/IEO interrupt daisy chain. The chips never call back into the board; the board feeds them pin levels and reads their outputs, which keeps them plain data you can inspect and serialise.
 - **`emulatron-machines`**: both boards with all the ROM variants MAME knows about (LC-80 sets 1 and 2, the export version with the SC-80 chess program, the LC-80.2 hack, POLY880 and its SC1 chess conversion). This crate also holds the multiplexed LED displays with persistence (a digit's brightness follows its share of the multiplex cycle, so ghosting and flicker come out naturally), the tape interface, autotype and save states.
+- **`emulatron-wasm`** and **`web/`**: WebAssembly bindings and the SvelteKit front-end.
 - **`emulatron-tui`**: the terminal front-end, built with ratatui. Keys and toolbar buttons are clickable, and terminals that report key releases (the kitty keyboard protocol) let you hold keys down.
 
-The core has no terminal dependencies, which is the point: a WebAssembly build with a SvelteKit front-end is the next step.
+The core has no terminal dependencies, which is what made the browser version a matter of bindings and a new front-end.
 
 The hardware wiring follows MAME's schematic-based drivers ([`lc80.cpp`](https://github.com/mamedev/mame/blob/master/src/mame/ddr/lc80.cpp), [`poly880.cpp`](https://github.com/mamedev/mame/blob/master/src/mame/ddr/poly880.cpp)); the monitors' behaviour comes from the ROMs themselves, and the POLY880 manual filled in the rest. Some of it is worth knowing before you start typing:
 
@@ -62,6 +74,8 @@ cargo run --release -p emulatron-tui -- -m lc80
 cargo run --release -p emulatron-tui -- -m lc80 -a examples/lc80/hello.txt   # type a program in
 cargo run --release -p emulatron-tui -- -m poly880 --load examples/poly880/hello.bin@4000
 ```
+
+For the browser version you need wasm-pack and Node.js (Yarn comes through corepack); `task web:dev` builds the WebAssembly package and starts a dev server, `task web:build` writes a static site to `web/build`.
 
 The ROMs are in `roms/`; see [`roms/README.md`](roms/README.md) for where they come from. The UI needs a terminal of at least 102×28 for the LC-80 and 123×33 for the POLY880, and makes use of more: the LC-80's chips appear from about 130 columns and its folder cover from about 150, the POLY880 puts its bus LEDs and display side by side from about 161 columns, and full-size keys need about 45 rows.
 
@@ -125,3 +139,7 @@ The board tests run on tiny hand-assembled ROMs, so they don't depend on the ori
 - The ROM dumps come from the MAME [0.201](https://archive.org/download/MAME201_Merged) and [0.279](https://archive.org/download/mame-roms-0.279-merged) merged sets on the Internet Archive; the SC1 ROM is identical to the one in Torsten Paul's [KCemu](https://github.com/t-paul/kcemu). Details and attribution are in [`roms/README.md`](roms/README.md). The ROMs are not covered by this repository's license.
 - The [POLY880 Bedienhandbuch](http://www.kc85-museum.de/books/poly880/) explained the monitor, the keys and the bus analyser.
 - Photos on [robotrontechnik.de](https://www.robotrontechnik.de/) and Wikimedia Commons showed what the machines looked like, down to the label inside the LC-80's folder. The photos in this README are by Florian Schäffer (LC-80, POLY880; CC BY-SA 4.0) and Konstantin Lanzet (U880D; CC BY-SA 3.0); see [`docs/photos/README.md`](docs/photos/README.md).
+
+## Licence
+
+The code is licensed under the [EUPL-1.2](LICENSE). The ROM dumps in `roms/` and the photos in `docs/photos/` are third-party works under their own terms (see the READMEs in those folders) and are not covered by it.
