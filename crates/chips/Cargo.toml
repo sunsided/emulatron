@@ -1,0 +1,10 @@
+[package]
+name = "emulatron-chips"
+description = "U855 PIO and U857 CTC (Z80 PIO/CTC clones) with daisy-chain interrupts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
