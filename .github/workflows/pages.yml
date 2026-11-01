@@ -1,0 +1,75 @@
+# Builds the WebAssembly emulator and the SvelteKit site and publishes it
+# to GitHub Pages (Settings → Pages → Source: GitHub Actions).
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain with wasm32 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Build the WebAssembly package
+        run: wasm-pack build crates/wasm --target web --release --out-dir ../../web/src/lib/wasm --out-name emulatron
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install web dependencies
+        working-directory: web
+        run: |
+          corepack enable
+          yarn install --immutable
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Check and build the site
+        working-directory: web
+        env:
+          # Served from https://<user>.github.io/<repo>/
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: |
+          yarn check
+          yarn build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -75,7 +75,7 @@ cargo run --release -p emulatron-tui -- -m lc80 -a examples/lc80/hello.txt   # t
 cargo run --release -p emulatron-tui -- -m poly880 --load examples/poly880/hello.bin@4000
 ```
 
-For the browser version you need wasm-pack and Node.js (Yarn comes through corepack); `task web:dev` builds the WebAssembly package and starts a dev server, `task web:build` writes a static site to `web/build`.
+For the browser version you need wasm-pack and Node.js (Yarn comes through corepack); `task web:dev` builds the WebAssembly package and starts a dev server, `task web:build` writes a static site to `web/build`. Pushes to `main` publish that site to GitHub Pages through `.github/workflows/pages.yml` (Pages source: GitHub Actions).
 
 The ROMs are in `roms/`; see [`roms/README.md`](roms/README.md) for where they come from. The UI needs a terminal of at least 102×28 for the LC-80 and 123×33 for the POLY880, and makes use of more: the LC-80's chips appear from about 130 columns and its folder cover from about 150, the POLY880 puts its bus LEDs and display side by side from about 161 columns, and full-size keys need about 45 rows.
 
