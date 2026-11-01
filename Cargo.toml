@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["crates/u880", "crates/chips", "crates/machines", "crates/tui"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["Markus Mayer <sunside227@gmail.com>"]
+repository = "https://github.com/sunsided/emulatron"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+u880 = { path = "crates/u880" }
+emulatron-chips = { path = "crates/chips" }
+emulatron-machines = { path = "crates/machines" }
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev]
+opt-level = 1

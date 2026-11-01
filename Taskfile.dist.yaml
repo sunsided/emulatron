@@ -1,0 +1,145 @@
+# emulatron — LC-80 / POLY880 emulators
+# https://taskfile.dev
+version: '3'
+
+vars:
+  MACHINE: '{{ .MACHINE | default "lc80" }}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list --sort=none
+    silent: true
+
+  build:
+    desc: Build the workspace (debug)
+    preconditions: &cargo
+      - sh: command -v cargo
+        msg: "cargo not found — install Rust from https://rustup.rs/"
+    cmds:
+      - cargo build --workspace --all-targets
+
+  build:release:
+    desc: Build the workspace (release)
+    preconditions: *cargo
+    cmds:
+      - cargo build --workspace --release
+
+  run:
+    desc: 'Run the TUI (MACHINE=lc80|lc80a|lc80e|lc80_2|poly880, extra args after --)'
+    preconditions: *cargo
+    cmds:
+      - cargo run --release -p emulatron-tui -- -m {{.MACHINE}} {{.CLI_ARGS}}
+    interactive: true
+
+  run:lc80:
+    desc: Run the LC-80
+    cmds:
+      - task: run
+        vars: {MACHINE: lc80}
+
+  run:poly880:
+    desc: Run the POLY880
+    cmds:
+      - task: run
+        vars: {MACHINE: poly880}
+
+  roms:
+    desc: List known machine variants and which ROMs were found
+    preconditions: *cargo
+    cmds:
+      - cargo run -q --release -p emulatron-tui -- --list
+
+  frame:
+    desc: 'Render one frame headless after N ms (MACHINE=…, MS=15000)'
+    preconditions: *cargo
+    vars:
+      MS: '{{ .MS | default "15000" }}'
+    cmds:
+      - cargo run -q --release -p emulatron-tui -- -m {{.MACHINE}} --dump-frame {{.MS}} {{.CLI_ARGS}}
+
+  test:
+    desc: Run the test suite (board, chip, CPU and real-ROM tests)
+    preconditions: *cargo
+    cmds:
+      - cargo test --workspace --release {{.CLI_ARGS}}
+
+  test:zex:
+    desc: Run the ZEXDOC/ZEXALL Z80 instruction exercisers (~2 min)
+    deps: [zex:fetch]
+    preconditions: *cargo
+    cmds:
+      - cargo test -p u880 --release --test zex -- --ignored --nocapture
+
+  zex:fetch:
+    desc: Download the ZEXDOC/ZEXALL binaries (GPL, not tracked)
+    preconditions:
+      - sh: command -v curl
+        msg: "curl not found — install curl"
+    status:
+      - test -f crates/u880/tests/zex/zexdoc.com
+      - test -f crates/u880/tests/zex/zexall.com
+    cmds:
+      - scripts/fetch-zex.sh
+
+  fmt:
+    desc: Format all Rust sources
+    aliases: [format]
+    preconditions: *cargo
+    cmds:
+      - cargo fmt --all
+
+  fmt:check:
+    desc: Check formatting without modifying files
+    preconditions: *cargo
+    cmds:
+      - cargo fmt --all -- --check
+
+  lint:
+    desc: Run clippy across the workspace (warnings as errors)
+    preconditions: *cargo
+    cmds:
+      - cargo clippy --workspace --all-targets -- -D warnings
+
+  lint:fix:
+    desc: Auto-fix clippy lints, then format
+    aliases: [fix]
+    preconditions: *cargo
+    cmds:
+      - cargo clippy --workspace --all-targets --fix --allow-dirty --allow-staged
+      - task: fmt
+
+  check:
+    desc: All static checks (cargo check, formatting, clippy)
+    preconditions: *cargo
+    cmds:
+      - cargo check --workspace --all-targets
+      - task: fmt:check
+      - task: lint
+
+  ci:
+    desc: Full CI sequence (checks + tests)
+    cmds:
+      - task: check
+      - task: test
+
+  docs:
+    desc: Build API documentation
+    preconditions: *cargo
+    cmds:
+      - cargo doc --workspace --no-deps
+
+  docs:open:
+    desc: Build API documentation and open it
+    preconditions: *cargo
+    cmds:
+      - cargo doc --workspace --no-deps --open
+
+  clean:
+    desc: Remove build output
+    preconditions: *cargo
+    status:
+      - test ! -d target
+    cmds:
+      - cargo clean
